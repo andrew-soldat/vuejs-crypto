@@ -141,7 +141,7 @@
           >
             <div class="px-4 py-5 sm:p-6 text-center">
               <dt class="text-sm font-medium text-gray-500 truncate">
-                {{ t.name }}
+                {{ t.name }} - USD
               </dt>
               <dd class="mt-1 text-3xl font-semibold text-gray-900">
                 {{ formatPrice(t.price) }}
@@ -174,7 +174,10 @@
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
           {{ selectedTicker.name }}
         </h3>
-        <div class="flex items-end border-gray-600 border-b border-l h-64">
+        <div
+          class="flex items-end border-gray-600 border-b border-l h-64"
+          ref="graph"
+        >
           <div
             v-for="(bar, index) in normalizedGraph"
             :key="index"
@@ -227,6 +230,7 @@ export default {
       graph: [],
       filter: "",
       page: 1,
+      maxGraphElements: 1,
     };
   },
   created() {
@@ -294,12 +298,19 @@ export default {
     },
   },
   methods: {
+    calculatedMaxGraphElements() {
+      if (!this.$refs.graph) {
+        return;
+      }
+      this.maxGraphElements = this.$refs.graph.offsetWidth / 40;
+    },
     updateTicker(tickerName, price) {
       this.tickers
         .filter((t) => t.name === tickerName)
         .forEach((t) => {
           if (t === this.selectedTicker) {
             this.graph.push(price);
+            this.graph = this.graph.slice(-this.maxGraphElements);
           }
           t.price = price;
         });
@@ -335,9 +346,16 @@ export default {
       unsubscribeFromTicker(tickerDelete.name);
     },
   },
+  mounted() {
+    window.addEventListener("resize", this.calculatedMaxGraphElements);
+  },
+  beforeUnmount() {
+    window.removeEventListener("resize", this.calculatedMaxGraphElements);
+  },
   watch: {
     selectedTicker() {
       this.graph = [];
+      this.$nextTick().then(this.calculatedMaxGraphElements);
     },
     paginatedTickers() {
       if (this.paginatedTickers.length === 0 && this.page > 1) {
